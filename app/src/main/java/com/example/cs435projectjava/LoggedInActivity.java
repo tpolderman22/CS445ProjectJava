@@ -1,8 +1,12 @@
 package com.example.cs435projectjava;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -11,6 +15,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -63,6 +68,9 @@ public class LoggedInActivity extends AppCompatActivity {
 
         //set details for the buttons displaying each organization
         newbtn.setHeight(200);
+        newbtn.setPadding(10,25,10,25);
+        int myColor = Color.argb(255, 3,161,252);
+        newbtn.setBackgroundColor(myColor);
         newbtn.setText("Default Organization");  //change this so that it shows the name of org
 
         /**
@@ -71,6 +79,7 @@ public class LoggedInActivity extends AppCompatActivity {
         newbtn.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+                //update this so that the first click displays the buttons, but the next click collapses them
                 for (int i=0; i<getNumLocsAtOrg();i++){
                     addLocationList(orgLayout);
                 }
@@ -106,6 +115,7 @@ public class LoggedInActivity extends AppCompatActivity {
      * to select it.
      */
     public void addLocationList(LinearLayout orgLayout){
+
         LinearLayout locList = new LinearLayout(this);
         Button newButton = new Button(this);
         newButton.setText("New Location");
@@ -117,6 +127,16 @@ public class LoggedInActivity extends AppCompatActivity {
 
         orgLayout.addView(newButton);
         orgLayout.addView(locList);
+
+        /**
+         * add a click listener that will open up the events at the location the user has selected
+         */
+        newButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                startNewActivity();
+            }
+        });
     }
 
     /**
@@ -151,7 +171,12 @@ public class LoggedInActivity extends AppCompatActivity {
         }
     }
 
-
+    /**
+     * create an Intent and start the new activity
+     */
+    public void startNewActivity(){
+        startActivity(new Intent(this, LocationView.class));
+    }
 
 
 }

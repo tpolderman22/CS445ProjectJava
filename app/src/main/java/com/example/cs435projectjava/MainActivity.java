@@ -3,6 +3,8 @@ package com.example.cs435projectjava;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -10,39 +12,27 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import java.util.concurrent.ExecutionException;
+
 /**
  * The first view the user sees is a login screen that will compare their credentials against
  * the database and allow them on if they match. The user is also able to sign up on this page
  * if they are not yet in the database.
  */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AsyncResponse{
+
+    boolean loginSuccess = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-        //The different UI components
+        //The buttons and the view itself
         final Button loginButton = findViewById(R.id.login);
         final Button signUpButton = findViewById(R.id.signup);
-        final EditText username =  findViewById(R.id.username);
-        final EditText password = findViewById(R.id.password);
-        final TextView errorText = findViewById(R.id.errorText);
+        final View thisView =  findViewById(R.id.mainView);
 
-        /**
-         * when the login button is pressed the text fields must be filled, with the email box containing
-         * a valid email address. The database will then check if the email is there, and if the
-         * password entered is a match. If so, the view will be set to the OrganizationsDisplay
-         * where the user can see all of the organization they belong to. If not, an error
-         * message will be displayed.
-         */
-        loginButton.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                logIn();
-            }
-        });
 
         /**
          * when the signup button is clicked the database will be checked for the user
@@ -61,22 +51,21 @@ public class MainActivity extends AppCompatActivity {
     /**
      * called when the user taps the login button if the login info matches the database entry
      */
-    public void logIn() {
-
-        //references to input texts
-        EditText username =  findViewById(R.id.username);
-        EditText password = findViewById(R.id.password);
-
+    public void logIn(View view) throws ExecutionException, InterruptedException {
+        //the text fields
+        final EditText username =  findViewById(R.id.username);
+        final EditText password = findViewById(R.id.password);
         //execute the database call and see if the user is in the db
-        BackgroundWorker worker = new BackgroundWorker(this);
-        worker.execute("login", username.getText().toString(), password.getText().toString());
+        makeUserDatabaseCall("login", username.getText().toString(),password.getText().toString());
 
-        //change the view the user sees
-        Intent intent = new Intent(this, LoggedInActivity.class);
-        TextView errTxt = findViewById(R.id.errorText);
-        //String message = errTxt.getText().toString();
-        //intent.putExtra(EXTRA_MESSAGE, message);
-        //startActivity(intent);
+    }
+
+    public boolean makeUserDatabaseCall(String type, String username, String password){
+        BackgroundWorker worker = new BackgroundWorker(this, this);
+        worker.execute(type, username, password);
+        Log.d("login main", String.valueOf(worker.success));
+        Log.d("login main", String.valueOf(worker.getStatus()));
+        return worker.success;
     }
 
     /**
@@ -98,4 +87,19 @@ public class MainActivity extends AppCompatActivity {
         errTxt.setVisibility(View.VISIBLE);
     }
 
+    @Override
+    public void processFinish(String output) {
+        final TextView errorText = findViewById(R.id.errorText);
+        if (output.equals("login success")){
+            errorText.setVisibility(View.INVISIBLE);
+            //change the view
+            Intent intent = new Intent(this, LoggedInActivity.class);
+            //String message = "new message";
+            //intent.putExtra(EXTRA_MESSAGE, message);
+            startActivity(intent);
+        }else{
+            errorText.setText("Invalid Credentials");
+            errorText.setVisibility(View.VISIBLE);
+        }
+    }
 }

@@ -23,6 +23,18 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
 
     Context context;
     AlertDialog alertDialog;
+    boolean success=false;
+    AsyncResponse ar=null;
+
+    /**
+     * A new background worker with a reference to the context of the view it was
+     * instantiated in and an asyncResponse for sharing with the UI thread
+     * @param context
+     */
+    public BackgroundWorker(Context context, AsyncResponse ar) {
+        this.context = context;
+        this.ar = ar;
+    }
 
     /**
      * A new background worker with a reference to the context of the view it was
@@ -40,6 +52,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
     protected void onPreExecute() {
         alertDialog = new AlertDialog.Builder(context).create();
         alertDialog.setTitle("Login Status");
+        //add a progress bar for the async task
     }
 
     @Override
@@ -49,19 +62,20 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
     protected void onPostExecute(String result) {
         alertDialog.setMessage(result);
         alertDialog.show();
+        Log.d("login post execute", "showing alert dialog");
+        ar.processFinish(result);
     }
 
     @Override
     /**
      * takes string params for username (email), password, and the type of query being executed.
-     * Uses different php scripts for loggin in and registering a new user to the database.
+     * Uses different php scripts for logging in and registering a new user to the database.
      */
     protected String doInBackground(String... params) {
         String type = params[0];
         String dbUrl = "http://192.168.1.156/cs445project/cs445login.php";   //localhost
         //String dbUrl = "http://10.0.2.2/cs445project/cs445login.php";
         if (type.equals("login")) {
-            Log.d("aaaa", "istrue");
             try {
                 //setting username and password to post
                 String username = params[1];
@@ -106,15 +120,14 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
                 con.disconnect();
 
                 //return the result
-                Log.d("result", result);
-                return result;
+                return result;  //result = "login success" if it worked
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
             return "login failed";
         }else if(type.equals("register")){
-            //TODO check if the user is in the databse and, if not, add them
+            return "registration";
         }
         return null;
     }

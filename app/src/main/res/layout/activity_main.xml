@@ -3,7 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/f"
+    android:id="@+id/mainView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
@@ -58,9 +58,9 @@
         android:layout_marginStart="48dp"
         android:layout_marginTop="32dp"
         android:layout_marginEnd="48dp"
-        android:text="LOG IN"
         android:onClick="logIn"
-        app:icon="@color/purple_200"
+        android:text="LOG IN"
+        app:icon="@android:color/holo_blue_light"
         app:iconTintMode="screen"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.497"
@@ -92,7 +92,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.582"
-        app:srcCompat="@drawable/teststrat" />
+        app:srcCompat="@drawable/cs445applogo" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

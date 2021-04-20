@@ -16,7 +16,7 @@
             android:name="com.google.android.wearable"
             android:required="false" />
 
-
+        <activity android:name=".LocationView"/>
         <activity android:name=".LoggedInActivity" />
         <activity android:name=".MainActivity">
             <intent-filter>

@@ -23,12 +23,12 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
 
     Context context;
     AlertDialog alertDialog;
-    boolean success=false;
-    AsyncResponse ar=null;
+    AsyncResponse ar = null;
 
     /**
      * A new background worker with a reference to the context of the view it was
      * instantiated in and an asyncResponse for sharing with the UI thread
+     *
      * @param context
      */
     public BackgroundWorker(Context context, AsyncResponse ar) {
@@ -39,6 +39,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
     /**
      * A new background worker with a reference to the context of the view it was
      * instantiated in
+     *
      * @param context
      */
     public BackgroundWorker(Context context) {
@@ -62,7 +63,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
     protected void onPostExecute(String result) {
         alertDialog.setMessage(result);
         alertDialog.show();
-        Log.d("login post execute", "showing alert dialog");
+        Log.d("login", result);
         ar.processFinish(result);
     }
 
@@ -72,65 +73,73 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
      * Uses different php scripts for logging in and registering a new user to the database.
      */
     protected String doInBackground(String... params) {
-        String type = params[0];
-        String dbUrl = "http://192.168.1.156/cs445project/cs445login.php";   //localhost
-        //String dbUrl = "http://10.0.2.2/cs445project/cs445login.php";
-        if (type.equals("login")) {
-            try {
-                //setting username and password to post
-                String username = params[1];
-                String password = params[2];
 
-                Log.d("data", username + " " + password);
+        String type = params[0]; //the type of db transaction
 
-                //setting up the database connection
-                URL url = new URL(dbUrl);
-                HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                con.setRequestMethod("POST");
-                con.setDoOutput(true);
-                con.setDoInput(true);
+        //setting username and password to post
+        String username = params[1];
+        String password = params[2];
+        String dbUrl = "";
 
-                //output things
-                OutputStream out = con.getOutputStream();
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-                String postData = URLEncoder.encode("username", "UTF-8") + "="
-                        + URLEncoder.encode(username, "UTF-8") + "&" + URLEncoder.encode("password", "UTF-8") + "="
-                        + URLEncoder.encode(password, "UTF-8");
-
-                Log.d("post", postData);
-
-                //write and flush with buffered writer + close output
-                writer.write(postData);
-                writer.flush();
-                writer.close();
-                out.close();
-
-                //input stuff
-                InputStream in = con.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                String result = "";
-                String line="";
-                while ((line = reader.readLine()) != null) {
-                    result += line;
-                }
-
-                //close input stuff
-                reader.close();
-                in.close();
-                con.disconnect();
-
-                //return the result
-                return result;  //result = "login success" if it worked
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return "login failed";
-        }else if(type.equals("register")){
-            return "registration";
+        if (type.equals("login")) { //perform login attempt
+            Log.d("login", "loggin in");
+            dbUrl = "http://192.168.1.156/cs445project/cs445login.php";   //localhost
+        } else if (type.equals("register")) { //push new user to db
+            Log.d("login", "registration");
+            dbUrl = "http://192.168.1.156/cs445project/cs445registerUser.php";   //localhost
         }
-        return null;
+        return getUserFromDb(username, password, dbUrl);
     }
 
 
+    public String getUserFromDb(String username, String password, String dbUrl) {
+        try {
+            Log.d("data", username + " " + password);
+
+            //setting up the database connection
+            URL url = new URL(dbUrl);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("POST");
+            con.setDoOutput(true);
+            con.setDoInput(true);
+
+            //output things
+            OutputStream out = con.getOutputStream();
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+            String postData = URLEncoder.encode("username", "UTF-8") + "="
+                    + URLEncoder.encode(username, "UTF-8") + "&" + URLEncoder.encode("password", "UTF-8") + "="
+                    + URLEncoder.encode(password, "UTF-8");
+
+            Log.d("post", postData);
+
+            //write and flush with buffered writer + close output
+            writer.write(postData);
+            writer.flush();
+            writer.close();
+            out.close();
+
+            //input stuff
+            InputStream in = con.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+            String result = "";
+            String line = "";
+            while ((line = reader.readLine()) != null) {
+                result += line;
+            }
+
+            //close input stuff
+            reader.close();
+            in.close();
+            con.disconnect();
+
+            //return the result
+            Log.d("result", result);
+            return result;
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "failed to get results from database";
+    }
 }

@@ -9,6 +9,9 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+/**
+ * show the time slots available at the location
+ */
 public class LocationView extends AppCompatActivity {
 
     @Override

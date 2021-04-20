@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity implements AsyncResponse{
     /**
      * called when the user taps the login button if the login info matches the database entry
      */
-    public void logIn(View view) throws ExecutionException, InterruptedException {
+    public void logIn(View view) {
         //the text fields
         final EditText username =  findViewById(R.id.username);
         final EditText password = findViewById(R.id.password);
@@ -60,12 +60,9 @@ public class MainActivity extends AppCompatActivity implements AsyncResponse{
 
     }
 
-    public boolean makeUserDatabaseCall(String type, String username, String password){
+    public void makeUserDatabaseCall(String type, String username, String password){
         BackgroundWorker worker = new BackgroundWorker(this, this);
         worker.execute(type, username, password);
-        Log.d("login main", String.valueOf(worker.success));
-        Log.d("login main", String.valueOf(worker.getStatus()));
-        return worker.success;
     }
 
     /**
@@ -76,12 +73,10 @@ public class MainActivity extends AppCompatActivity implements AsyncResponse{
         EditText username =  findViewById(R.id.username);
         EditText password = findViewById(R.id.password);
 
-        //execute the database call and see if the user is in the db
-        BackgroundWorker worker = new BackgroundWorker(this);
+        //execute the database call and see if the user is in the db, if not, add them
+        BackgroundWorker worker = new BackgroundWorker(this, this);
         worker.execute("register", username.getText().toString(), password.getText().toString());
 
-        //change the view the user sees
-        Intent intent = new Intent(this, LoggedInActivity.class);
         TextView errTxt = findViewById(R.id.errorText);
         errTxt.setText("Registering User");
         errTxt.setVisibility(View.VISIBLE);
@@ -90,16 +85,20 @@ public class MainActivity extends AppCompatActivity implements AsyncResponse{
     @Override
     public void processFinish(String output) {
         final TextView errorText = findViewById(R.id.errorText);
-        if (output.equals("login success")){
+        if (output.equals("Login Success")){
             errorText.setVisibility(View.INVISIBLE);
             //change the view
             Intent intent = new Intent(this, LoggedInActivity.class);
             //String message = "new message";
             //intent.putExtra(EXTRA_MESSAGE, message);
             startActivity(intent);
-        }else{
+        }else if(output.equals("Login Failed")){
             errorText.setText("Invalid Credentials");
             errorText.setVisibility(View.VISIBLE);
+        }else if (output.equals("Registration Success")){
+            errorText.setText("Log In Under New Credentials");
+        }else if (output.equals("Registration Failed")){
+            errorText.setText("Failed To Register New User");
         }
     }
 }

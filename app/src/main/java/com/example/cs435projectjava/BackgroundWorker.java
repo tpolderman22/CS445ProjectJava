@@ -4,14 +4,18 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.net.URLEncoder;
 
@@ -23,6 +27,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
 
     Context context;
     AlertDialog alertDialog;
+    ProgressBar pb;
     AsyncResponse ar = null;
 
     /**
@@ -52,8 +57,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
      */
     protected void onPreExecute() {
         alertDialog = new AlertDialog.Builder(context).create();
-        alertDialog.setTitle("Login Status");
-        //add a progress bar for the async task
+        //add progress bar
     }
 
     @Override
@@ -61,56 +65,111 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
      * set the message in the dialog box to the result of the database query
      */
     protected void onPostExecute(String result) {
-        alertDialog.setMessage(result);
-        alertDialog.show();
-        Log.d("login", result);
-        ar.processFinish(result);
+        if (result.contains("Login Success")) { //for a successful login the userid will be passed back
+            String[] splitOutput = result.split(" ");
+            result = splitOutput[1] + " " + splitOutput[2]; //this will be the users email
+            alertDialog.setTitle("Login Status");
+            alertDialog.setMessage(result);
+            alertDialog.show();
+            ar.processFinish(result, splitOutput[0]);
+        }else if (result.contains("Membership Check Success")){
+            String[] splitOutput = result.split(",");
+            result = splitOutput[0];
+            ar.processFinish(result, splitOutput[1]);
+        } else {
+            alertDialog.setTitle("New Membership Status");
+            alertDialog.setMessage(result);
+            alertDialog.show();
+            ar.processFinish(result, null);
+        }
     }
 
     @Override
     /**
-     * takes string params for username (email), password, and the type of query being executed.
-     * Uses different php scripts for logging in and registering a new user to the database.
+     * takes any number of String params and depending on the first parameter(type), different database
+     * calls will be made. The type determines which url will be used and what data will be returned
      */
     protected String doInBackground(String... params) {
 
         String type = params[0]; //the type of db transaction
-
-        //setting username and password to post
-        String username = params[1];
-        String password = params[2];
         String dbUrl = "";
 
         if (type.equals("login")) { //perform login attempt
-            Log.d("login", "loggin in");
-            dbUrl = "http://192.168.1.156/cs445project/cs445login.php";   //localhost
+            String username = params[1];
+            String password = params[2];
+            dbUrl = "http://192.168.1.156/cs445project/cs445login.php";   //local database
+            try {
+                return getUserFromDb(username, password, dbUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         } else if (type.equals("register")) { //push new user to db
-            Log.d("login", "registration");
-            dbUrl = "http://192.168.1.156/cs445project/cs445registerUser.php";   //localhost
+            String username = params[1];
+            String password = params[2];
+            dbUrl = "http://192.168.1.156/cs445project/cs445registerUser.php";   //local database
+            try {
+                return getUserFromDb(username, password, dbUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else if (type.equals("returnOrgs")) { //find the orgs a user belongs to
+            String userid = params[1];
+            dbUrl = "http://192.168.1.156/cs445project/cs445returnMemberships.php";   //local database
+            try {
+                return pullFromMembershipDb(userid, dbUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else if (type.equals("newMembership")){ //add a new membership table entry
+            String userid = params[2];
+            String orgName = params[1];
+            Log.d("newM", "adding member");
+            dbUrl = "http://192.168.1.156/cs445project/cs445addMembership.php"; //local database
+            try {
+                return addMembership(orgName,userid,dbUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        return getUserFromDb(username, password, dbUrl);
+        return null;
     }
 
+    public String pullFromMembershipDb(String userid, String dbUrl) throws IOException {
+        HttpURLConnection con = establishDbConnection(dbUrl);
+        //output username + password for checking
+        OutputStream out = con.getOutputStream();
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+        String postData = URLEncoder.encode("userid", "UTF-8") + "="
+                + URLEncoder.encode(userid, "UTF-8");
 
-    public String getUserFromDb(String username, String password, String dbUrl) {
-        try {
-            Log.d("data", username + " " + password);
+        //write and flush with buffered writer + close output
+        writer.write(postData);
+        writer.flush();
+        writer.close();
+        out.close();
 
-            //setting up the database connection
-            URL url = new URL(dbUrl);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("POST");
-            con.setDoOutput(true);
-            con.setDoInput(true);
+        //receive and return input back from db
+        return readFromDb(con);
+    }
 
-            //output things
+    /**
+     * send the given username and password as a post request to the given url
+     * and receive the db response
+     * @param username
+     * @param password
+     * @param dbUrl
+     * @return
+     * @throws IOException
+     */
+    public String getUserFromDb(String username, String password, String dbUrl) throws IOException {
+            HttpURLConnection con = establishDbConnection(dbUrl);
+
+            //output username + password for checking
             OutputStream out = con.getOutputStream();
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
             String postData = URLEncoder.encode("username", "UTF-8") + "="
                     + URLEncoder.encode(username, "UTF-8") + "&" + URLEncoder.encode("password", "UTF-8") + "="
                     + URLEncoder.encode(password, "UTF-8");
-
-            Log.d("post", postData);
 
             //write and flush with buffered writer + close output
             writer.write(postData);
@@ -118,28 +177,64 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
             writer.close();
             out.close();
 
-            //input stuff
-            InputStream in = con.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-            String result = "";
-            String line = "";
-            while ((line = reader.readLine()) != null) {
-                result += line;
-            }
-
-            //close input stuff
-            reader.close();
-            in.close();
-            con.disconnect();
-
-            //return the result
-            Log.d("result", result);
-            return result;
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return "failed to get results from database";
+            //receive and return input back from db
+            return readFromDb(con);
     }
+
+    public String addMembership(String orgName, String userid, String dbUrl) throws IOException {
+        HttpURLConnection con = establishDbConnection(dbUrl);
+
+        //output username + password for checking
+        OutputStream out = con.getOutputStream();
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+        String postData = URLEncoder.encode("orgName", "UTF-8") + "="
+                + URLEncoder.encode(orgName, "UTF-8") + "&" + URLEncoder.encode("userid", "UTF-8") + "="
+                + URLEncoder.encode(userid, "UTF-8");
+
+        //write and flush with buffered writer + close output
+        writer.write(postData);
+        writer.flush();
+        writer.close();
+        out.close();
+
+        //receive and return input back from db
+        return readFromDb(con);
+    }
+
+    public HttpURLConnection establishDbConnection(String dbUrl) throws IOException {
+        //setting up the database connection
+        URL url = new URL(dbUrl);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod("POST");
+        con.setDoOutput(true);
+        con.setDoInput(true);
+        return con;
+    }
+
+    /**
+     * receive input from the url connection passed in and return the result as a string
+     * @param con
+     * @return
+     * @throws IOException
+     */
+    public String readFromDb(HttpURLConnection con) throws IOException {
+        //input stuff
+        InputStream in = con.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+        String result = "";
+        String line = "";
+        while ((line = reader.readLine()) != null) {
+            result += line;
+        }
+
+        //close input stuff
+        reader.close();
+        in.close();
+        con.disconnect();
+
+        //return the result
+        Log.d("result", result);
+        return result;
+    }
+
 }

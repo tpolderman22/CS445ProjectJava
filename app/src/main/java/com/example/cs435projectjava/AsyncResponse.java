@@ -5,5 +5,5 @@ package com.example.cs435projectjava;
  * This is necessary to authenticate database call results
  */
 public interface AsyncResponse {
-    void processFinish(String output);
+    void processFinish(String result, String additionalData);
 }

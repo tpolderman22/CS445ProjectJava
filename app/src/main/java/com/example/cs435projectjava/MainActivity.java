@@ -3,16 +3,11 @@ package com.example.cs435projectjava;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-
-import java.util.concurrent.ExecutionException;
 
 /**
  * The first view the user sees is a login screen that will compare their credentials against
@@ -32,7 +27,6 @@ public class MainActivity extends AppCompatActivity implements AsyncResponse{
         final Button loginButton = findViewById(R.id.login);
         final Button signUpButton = findViewById(R.id.signup);
         final View thisView =  findViewById(R.id.mainView);
-
 
         /**
          * when the signup button is clicked the database will be checked for the user
@@ -83,21 +77,20 @@ public class MainActivity extends AppCompatActivity implements AsyncResponse{
     }
 
     @Override
-    public void processFinish(String output) {
+    public void processFinish(String result, String additionalData) {
         final TextView errorText = findViewById(R.id.errorText);
-        if (output.equals("Login Success")){
+        if (result.contains("Login Success")){
             errorText.setVisibility(View.INVISIBLE);
             //change the view
             Intent intent = new Intent(this, LoggedInActivity.class);
-            //String message = "new message";
-            //intent.putExtra(EXTRA_MESSAGE, message);
+            intent.putExtra("userid", additionalData);
             startActivity(intent);
-        }else if(output.equals("Login Failed")){
+        }else if(result.equals("Login Failed")){
             errorText.setText("Invalid Credentials");
             errorText.setVisibility(View.VISIBLE);
-        }else if (output.equals("Registration Success")){
+        }else if (result.equals("Registration Success")){
             errorText.setText("Log In Under New Credentials");
-        }else if (output.equals("Registration Failed")){
+        }else if (result.equals("Registration Failed")){
             errorText.setText("Failed To Register New User");
         }
     }

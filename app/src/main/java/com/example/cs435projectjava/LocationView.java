@@ -16,7 +16,6 @@ public class LocationView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("rrrr", "opened new activity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_events_on_location);
 

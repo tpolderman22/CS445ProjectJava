@@ -1,12 +1,10 @@
 package com.example.cs435projectjava;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -17,11 +15,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
 /**
@@ -31,29 +26,46 @@ import java.io.OutputStreamWriter;
  * of locations where events are available to sign up. When they select a location, a list of events
  * and times will be generated. The user can sign up for these events.
  */
-public class LoggedInActivity extends AppCompatActivity {
+public class LoggedInActivity extends AppCompatActivity implements AsyncResponse{
+
+    String userid;
+    boolean hidePress = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_logged_in);
         BackgroundWorker db = new BackgroundWorker(getApplicationContext());
+        Bundle extras = getIntent().getExtras();
+        userid = extras.getString("userid");
 
-        //ui components
+        //execute the database call and find all of the oranizations this user belongs to
+        BackgroundWorker worker = new BackgroundWorker(this, this);
+        worker.execute("returnOrgs", userid);
+
+        //show the user id of the logged in user for testing purposes
+        TextView userDisplay = findViewById(R.id.user);
+        userDisplay.setText("showing results for user " + userid);
+
         Button joinOrg = findViewById(R.id.joinOrgBtn);
-        EditText orgToJoin = findViewById(R.id.toJoin);
 
-        // TODO: make this add a button for every org in database
-        for(int i=0; i<getNumOrgs(); i++){
-            addOrganizationButton();
-        }
+        /**
+         * when this button is pressed, check if the organization entered in the text field exists,
+         * make the user a member of it
+         */
+        joinOrg.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                joinOrg();
+            }
+        });
 
     }
 
     /**
-     * adds a new button to the second nested linear layout
+     * adds a new button for each membership to the second nested linear layout
      */
-    public void addOrganizationButton() {
+    public void addOrganizationButton(String name) {
 
         Button newbtn = new Button(this);
         LinearLayout orgLayout = new LinearLayout(this);
@@ -68,10 +80,10 @@ public class LoggedInActivity extends AppCompatActivity {
 
         //set details for the buttons displaying each organization
         newbtn.setHeight(200);
+        newbtn.setText(name); //display the name of the organization this button represents
         newbtn.setPadding(10,25,10,25);
         int myColor = Color.argb(255, 3,161,252);
         newbtn.setBackgroundColor(myColor);
-        newbtn.setText("Default Organization");  //change this so that it shows the name of org
 
         /**
          * add a click listener that will generate a new list of events that can be signed up for
@@ -79,9 +91,12 @@ public class LoggedInActivity extends AppCompatActivity {
         newbtn.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                //update this so that the first click displays the buttons, but the next click collapses them
-                for (int i=0; i<getNumLocsAtOrg();i++){
-                    addLocationList(orgLayout);
+                if (!hidePress){
+                    for (int i=0; i<5;i++){   //fix this so it wont perpetually add button, but instead shows buttons for each organizations locations
+                        addLocationList(orgLayout);
+                    }
+                }else {
+                    //hide the buttons
                 }
             }
         });
@@ -90,23 +105,6 @@ public class LoggedInActivity extends AppCompatActivity {
         orgLayout.addView(newbtn);
         linLay2.addView(scroll);
         scroll.addView(orgLayout);
-    }
-
-    /**
-     * returns the number of organizations the user is registered to after checking the database
-     * @return
-     */
-    public int getNumOrgs(){
-        return 5;
-    }
-
-    /**
-     * checks the database for the event list of a particular organization and
-     * returns the number of them
-     * @return
-     */
-    private int getNumLocsAtOrg(){
-        return 5;
     }
 
     /**
@@ -157,18 +155,12 @@ public class LoggedInActivity extends AppCompatActivity {
      * interact with
      */
     public void joinOrg(){
+        //ui components for joining new organization
+        Button joinOrg = findViewById(R.id.joinOrgBtn);
+        EditText orgToJoin = findViewById(R.id.toJoin);
 
-        //TODO: call this method when the button is pressed, add the org to db
-        try {
-            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(openFileOutput("fakeOrgDatabase.txt", Context.MODE_APPEND));
-            outputStreamWriter.write("dfcghjbk");
-            outputStreamWriter.close();
-        }
-        catch (FileNotFoundException e) {
-            Log.d("Exception", "File write failed: " + e.toString());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        BackgroundWorker bw = new BackgroundWorker(this,this);
+        bw.execute("newMembership", orgToJoin.getText().toString(), userid);
     }
 
     /**
@@ -179,4 +171,19 @@ public class LoggedInActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    public void processFinish(String result, String additionalData) {
+        if (result.contains("Membership Check Success")) {
+            String[] organizations = additionalData.split(";");
+            for (int i = 0; i < organizations.length; i++) {
+                addOrganizationButton(organizations[i]);
+            }
+        }else if (result.contains("Welcome New Member")){
+            finish();
+            startActivity(getIntent());
+        }
+        else {
+            //do nothing for now
+        }
+    }
 }

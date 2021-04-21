@@ -9,6 +9,12 @@
     tools:context="com.example.cs435projectjava.LoggedInActivity">
 
 
+    <TextView
+        android:id="@+id/user"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="TextView" />
+
     <LinearLayout
         android:id="@+id/linLay1"
         android:layout_width="wrap_content"

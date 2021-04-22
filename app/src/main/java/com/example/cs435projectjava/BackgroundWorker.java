@@ -65,19 +65,44 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
      * set the message in the dialog box to the result of the database query
      */
     protected void onPostExecute(String result) {
-        if (result.contains("Login Success")) { //for a successful login the userid will be passed back
-            String[] splitOutput = result.split(" ");
-            result = splitOutput[1] + " " + splitOutput[2]; //this will be the users email
-            alertDialog.setTitle("Login Status");
-            alertDialog.setMessage(result);
-            alertDialog.show();
-            ar.processFinish(result, splitOutput[0]);
-        }else if (result.contains("Membership Check Success")){
-            String[] splitOutput = result.split(",");
-            result = splitOutput[0];
-            ar.processFinish(result, splitOutput[1]);
-        } else {
-            alertDialog.setTitle("New Membership Status");
+        if(result!=null) {
+            if (result.contains("Login Success")) { //for a successful login the userid will be passed back
+                String[] splitOutput = result.split(" ");
+                result = splitOutput[1] + " " + splitOutput[2]; //this will be the users email
+                alertDialog.setTitle("Login Status");
+                alertDialog.setMessage(result);
+                alertDialog.show();
+                ar.processFinish(result, splitOutput[0]);
+            } else if (result.contains("Membership Check Success")) {
+                String[] splitOutput = result.split(",");
+                result = splitOutput[0];
+                ar.processFinish(result, splitOutput[1]);
+            } else if (result.contains("Login Failed")) {
+                alertDialog.setTitle("Login Status");
+                alertDialog.setMessage(result);
+                alertDialog.show();
+                ar.processFinish(result, null);
+            } else if (result.contains("Registration Success")) {
+                alertDialog.setTitle("New Membership Status");
+                alertDialog.setMessage(result);
+                alertDialog.show();
+                ar.processFinish(result, null);
+            } else if(result.contains("User Already Exists")){
+                alertDialog.setTitle("New Membership Status");
+                alertDialog.setMessage(result);
+                alertDialog.show();
+                ar.processFinish(result, null);
+            } else if (result.contains("Registration Failed")){
+                alertDialog.setTitle("New Membership Status");
+                alertDialog.setMessage(result);
+                alertDialog.show();
+                ar.processFinish(result, null);
+            } else if (result.contains("Locations Check Success")){
+                String[] splitOutput = result.split("%");
+                ar.processFinish(splitOutput[0],splitOutput[1]);
+            }
+        }else{
+            alertDialog.setTitle("Status");
             alertDialog.setMessage(result);
             alertDialog.show();
             ar.processFinish(result, null);
@@ -123,11 +148,18 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
         }else if (type.equals("newMembership")){ //add a new membership table entry
             String userid = params[2];
             String orgName = params[1];
-            Log.d("newM", "adding member");
             dbUrl = "http://192.168.1.156/cs445project/cs445addMembership.php"; //local database
             try {
                 return addMembership(orgName,userid,dbUrl);
             } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else if (type.equals("getLocations")){
+            String orgid = params[1];
+            dbUrl = "http://192.168.1.156/cs445project/cs445queryLocations.php"; //local database
+            try{
+                return queryLocations(orgid, dbUrl);
+            }catch (IOException e){
                 e.printStackTrace();
             }
         }
@@ -190,6 +222,25 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
         String postData = URLEncoder.encode("orgName", "UTF-8") + "="
                 + URLEncoder.encode(orgName, "UTF-8") + "&" + URLEncoder.encode("userid", "UTF-8") + "="
                 + URLEncoder.encode(userid, "UTF-8");
+
+        //write and flush with buffered writer + close output
+        writer.write(postData);
+        writer.flush();
+        writer.close();
+        out.close();
+
+        //receive and return input back from db
+        return readFromDb(con);
+    }
+
+    public String queryLocations(String orgid, String dbUrl) throws IOException{
+        HttpURLConnection con = establishDbConnection(dbUrl);
+
+        //output username + password for checking
+        OutputStream out = con.getOutputStream();
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+        String postData = URLEncoder.encode("orgid", "UTF-8") + "="
+                + URLEncoder.encode(orgid, "UTF-8");
 
         //write and flush with buffered writer + close output
         writer.write(postData);

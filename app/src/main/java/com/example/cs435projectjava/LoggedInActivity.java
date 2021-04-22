@@ -15,10 +15,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-
 /**
  * This class is represents the view the user sees when they successfully log into their account.
  * They should see a list of the organizations they are registered to, and should be able to register
@@ -29,15 +25,21 @@ import java.io.OutputStreamWriter;
 public class LoggedInActivity extends AppCompatActivity implements AsyncResponse{
 
     String userid;
+    Context context; //store this activity for calls in onclick methods
+    AsyncResponse ar; //store this for the same reason
+
+    String[] locations;
     boolean hidePress = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_logged_in);
-        BackgroundWorker db = new BackgroundWorker(getApplicationContext());
+        context = this;
+        ar = this;
         Bundle extras = getIntent().getExtras();
-        userid = extras.getString("userid");
+        userid = extras.getString("userid");  //the user that logged in needs to be saved for showing the orgs
+        //they belong to
 
         //execute the database call and find all of the oranizations this user belongs to
         BackgroundWorker worker = new BackgroundWorker(this, this);
@@ -63,14 +65,17 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
     }
 
     /**
-     * adds a new button for each membership to the second nested linear layout
+     * adds a new button to the screen with the given name displayed
+     * when pushed, this button will display the locations at the organization it represents
      */
-    public void addOrganizationButton(String name) {
+    public void addOrganizationButton(String name, String id) {
 
         Button newbtn = new Button(this);
         LinearLayout orgLayout = new LinearLayout(this);
         ScrollView scroll = new ScrollView(this);
         LinearLayout linLay2 = findViewById(R.id.linLay2);
+
+        int orgId = Integer.valueOf(id);
 
         //set up the new LinearView (orgLayout)
         orgLayout.setLayoutParams(new ViewGroup.LayoutParams(
@@ -85,6 +90,11 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
         int myColor = Color.argb(255, 3,161,252);
         newbtn.setBackgroundColor(myColor);
 
+        //add the new components as children
+        orgLayout.addView(newbtn);
+        linLay2.addView(scroll);
+        scroll.addView(orgLayout);
+
         /**
          * add a click listener that will generate a new list of events that can be signed up for
          */
@@ -92,19 +102,29 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
             @Override
             public void onClick(View v) {
                 if (!hidePress){
-                    for (int i=0; i<5;i++){   //fix this so it wont perpetually add button, but instead shows buttons for each organizations locations
-                        addLocationList(orgLayout);
+                    //execute the database call and find all of the locations for this particular organization
+                    BackgroundWorker worker = new BackgroundWorker(context, ar);
+                    worker.execute("getLocations", Integer.toString(orgId));
+
+                    //add a button for each signup location
+                    if(locations!=null && locations.length>0){
+                        for (int i=0;i<locations.length;i++){
+                            String[] locationData = locations[i].split("@");
+                            Log.d("helloLocationData", locationData[0] + " " +  locationData[1]);
+                            addLocationButton(orgLayout, locationData[0], locationData[1]);
+                        }
+                        locations=null;
+                        hidePress=true;
                     }
-                }else {
-                    //hide the buttons
+                } else {
+                    for (int i=2;i<orgLayout.getChildCount();i++){
+                        orgLayout.getChildAt(i).setVisibility(View.INVISIBLE);
+                    }
+
+                    hidePress=false;
                 }
             }
         });
-
-        //add the new components as children
-        orgLayout.addView(newbtn);
-        linLay2.addView(scroll);
-        scroll.addView(orgLayout);
     }
 
     /**
@@ -112,16 +132,23 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
      * The name of the location is displayed along and a button is placed by it for the user
      * to select it.
      */
-    public void addLocationList(LinearLayout orgLayout){
+    public void addLocationButton(LinearLayout orgLayout,String name, String description){
 
         LinearLayout locList = new LinearLayout(this);
         Button newButton = new Button(this);
-        newButton.setText("New Location");
+        newButton.setText(name + ": " + description);
 
         locList.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         locList.setOrientation(LinearLayout.VERTICAL);
+
+        //set details for the buttons displaying each locationk
+        newButton.setHeight(200);
+        newButton.setText(name); //display the name of the organization this button represents
+        newButton.setPadding(10,25,10,25);
+        int myColor = Color.argb(255, 255,0,0);
+        newButton.setBackgroundColor(myColor);
 
         orgLayout.addView(newButton);
         orgLayout.addView(locList);
@@ -135,19 +162,6 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
                 startNewActivity();
             }
         });
-    }
-
-    /**
-     * adds another nested linear layout that will have a text field describing the event,
-     * and a button for signing up for it. It will show the time and description and any limit
-     * to participation.
-     */
-    public void addEventList(){
-        LinearLayout eventList = new LinearLayout(this);
-        Button newButton = new Button(this);
-        LinearLayout linlay2 =findViewById(R.id.linLay2);
-        eventList.addView(newButton);
-        linlay2.addView(eventList);
     }
 
     /**
@@ -176,14 +190,15 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
         if (result.contains("Membership Check Success")) {
             String[] organizations = additionalData.split(";");
             for (int i = 0; i < organizations.length; i++) {
-                addOrganizationButton(organizations[i]);
+                String[] info = organizations[i].split("@");
+                addOrganizationButton(info[1], info[0]);
             }
-        }else if (result.contains("Welcome New Member")){
+        }else if (result.contains("Welcome New Member")){  //restart the activity so the new org will show up
             finish();
             startActivity(getIntent());
-        }
-        else {
-            //do nothing for now
+        }else if(result.contains("Locations Check Success")){      //display the list of locations at each organization
+            //String[] locations = additionalData.split(";;;");
+            locations = additionalData.split(";;;");
         }
     }
 }

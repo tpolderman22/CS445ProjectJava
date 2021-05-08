@@ -100,12 +100,12 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
             } else if (result.contains("Locations Check Success")){
                 String[] splitOutput = result.split("%");
                 ar.processFinish(splitOutput[0],splitOutput[1]);
+            }else{
+                alertDialog.setTitle("Status");
+                alertDialog.setMessage(result);
+                alertDialog.show();
+                ar.processFinish(result, null);
             }
-        }else{
-            alertDialog.setTitle("Status");
-            alertDialog.setMessage(result);
-            alertDialog.show();
-            ar.processFinish(result, null);
         }
     }
 
@@ -118,11 +118,15 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
 
         String type = params[0]; //the type of db transaction
         String dbUrl = "";
+        //String ip = "192.168.1.156";
+        String ip = "192.168.0.156";
+
 
         if (type.equals("login")) { //perform login attempt
             String username = params[1];
             String password = params[2];
-            dbUrl = "http://192.168.1.156/cs445project/cs445login.php";   //local database
+            dbUrl = "http://" + ip + "/cs445project/cs445login.php";   //local database
+            Log.d("ip", dbUrl);
             try {
                 return getUserFromDb(username, password, dbUrl);
             } catch (IOException e) {
@@ -131,7 +135,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
         } else if (type.equals("register")) { //push new user to db
             String username = params[1];
             String password = params[2];
-            dbUrl = "http://192.168.1.156/cs445project/cs445registerUser.php";   //local database
+            dbUrl = "http://" + ip + "/cs445project/cs445registerUser.php";   //local database
             try {
                 return getUserFromDb(username, password, dbUrl);
             } catch (IOException e) {
@@ -139,7 +143,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
             }
         } else if (type.equals("returnOrgs")) { //find the orgs a user belongs to
             String userid = params[1];
-            dbUrl = "http://192.168.1.156/cs445project/cs445returnMemberships.php";   //local database
+            dbUrl = "http://" + ip + "/cs445project/cs445returnMemberships.php";   //local database
             try {
                 return pullFromMembershipDb(userid, dbUrl);
             } catch (IOException e) {
@@ -148,7 +152,7 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
         }else if (type.equals("newMembership")){ //add a new membership table entry
             String userid = params[2];
             String orgName = params[1];
-            dbUrl = "http://192.168.1.156/cs445project/cs445addMembership.php"; //local database
+            dbUrl = "http://" + ip + "/cs445project/cs445addMembership.php"; //local database
             try {
                 return addMembership(orgName,userid,dbUrl);
             } catch (IOException e) {
@@ -156,16 +160,32 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
             }
         }else if (type.equals("getLocations")){
             String orgid = params[1];
-            dbUrl = "http://192.168.1.156/cs445project/cs445queryLocations.php"; //local database
+            dbUrl = "http://" + ip + "/cs445project/cs445queryLocations.php"; //local database
             try{
                 return queryLocations(orgid, dbUrl);
             }catch (IOException e){
+                e.printStackTrace();
+            }
+        }else if (type.equals("selectTime")){
+            String locName = params[1];
+            String user = params[2];
+            String date = params[3];
+            try {
+                return makeAppointment(locName, user,date,dbUrl);
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         return null;
     }
 
+    /**
+     * check all of the memberships of a given userid
+     * @param userid
+     * @param dbUrl
+     * @return
+     * @throws IOException
+     */
     public String pullFromMembershipDb(String userid, String dbUrl) throws IOException {
         HttpURLConnection con = establishDbConnection(dbUrl);
         //output username + password for checking
@@ -209,10 +229,19 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
             writer.close();
             out.close();
 
+            Log.d("postdata", username + " " + password);
             //receive and return input back from db
             return readFromDb(con);
     }
 
+    /**
+     * add a user to the memberships database with the given organization
+     * @param orgName
+     * @param userid
+     * @param dbUrl
+     * @return
+     * @throws IOException
+     */
     public String addMembership(String orgName, String userid, String dbUrl) throws IOException {
         HttpURLConnection con = establishDbConnection(dbUrl);
 
@@ -233,6 +262,13 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
         return readFromDb(con);
     }
 
+    /**
+     * return all of the locations/event spots at an organization
+     * @param orgid
+     * @param dbUrl
+     * @return
+     * @throws IOException
+     */
     public String queryLocations(String orgid, String dbUrl) throws IOException{
         HttpURLConnection con = establishDbConnection(dbUrl);
 
@@ -241,6 +277,34 @@ public class BackgroundWorker extends AsyncTask<String, Void, String> {
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
         String postData = URLEncoder.encode("orgid", "UTF-8") + "="
                 + URLEncoder.encode(orgid, "UTF-8");
+
+        //write and flush with buffered writer + close output
+        writer.write(postData);
+        writer.flush();
+        writer.close();
+        out.close();
+
+        //receive and return input back from db
+        return readFromDb(con);
+    }
+
+    /**
+     * submit the given time, user, and location to the appointment table in the database
+     * @param locationName
+     * @param dbUrl
+     * @return
+     * @throws IOException
+     */
+    public String makeAppointment(String locationName, String user, String date, String dbUrl) throws IOException {
+        HttpURLConnection con = establishDbConnection(dbUrl);
+
+        //output username + password for checking
+        OutputStream out = con.getOutputStream();
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+        String postData = URLEncoder.encode("locationName", "UTF-8") + "="
+                + URLEncoder.encode(locationName, "UTF-8") + "&" + URLEncoder.encode("user", "UTF-8") + "="
+                + URLEncoder.encode(user, "UTF-8") + URLEncoder.encode("date", "UTF-8") + "="
+                + URLEncoder.encode(date, "UTF-8");
 
         //write and flush with buffered writer + close output
         writer.write(postData);

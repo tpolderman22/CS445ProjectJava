@@ -27,9 +27,9 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
     String userid;
     Context context; //store this activity for calls in onclick methods
     AsyncResponse ar; //store this for the same reason
+    boolean hidePress = false;
 
     String[] locations;
-    boolean hidePress = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,7 +101,9 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
         newbtn.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+                Log.d("hide", String.valueOf(hidePress));
                 if (!hidePress){
+                    hidePress=true;
                     //execute the database call and find all of the locations for this particular organization
                     BackgroundWorker worker = new BackgroundWorker(context, ar);
                     worker.execute("getLocations", Integer.toString(orgId));
@@ -110,19 +112,18 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
                     if(locations!=null && locations.length>0){
                         for (int i=0;i<locations.length;i++){
                             String[] locationData = locations[i].split("@");
-                            Log.d("helloLocationData", locationData[0] + " " +  locationData[1]);
                             addLocationButton(orgLayout, locationData[0], locationData[1]);
                         }
                         locations=null;
-                        hidePress=true;
                     }
                 } else {
-                    for (int i=2;i<orgLayout.getChildCount();i++){
-                        orgLayout.getChildAt(i).setVisibility(View.INVISIBLE);
+                    for (int i=1;i<orgLayout.getChildCount();i++){
+                        View child = orgLayout.getChildAt(i);
+                        orgLayout.removeView(child);
                     }
-
                     hidePress=false;
                 }
+                Log.d("hide", String.valueOf(hidePress));
             }
         });
     }
@@ -136,7 +137,6 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
 
         LinearLayout locList = new LinearLayout(this);
         Button newButton = new Button(this);
-        newButton.setText(name + ": " + description);
 
         locList.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -147,8 +147,9 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
         newButton.setHeight(200);
         newButton.setText(name); //display the name of the organization this button represents
         newButton.setPadding(10,25,10,25);
-        int myColor = Color.argb(255, 255,0,0);
-        newButton.setBackgroundColor(myColor);
+//        int myColor = Color.argb(255, 255,0,0);
+//        newButton.setBackgroundColor(myColor);
+        newButton.setBackgroundColor(Color.WHITE);
 
         orgLayout.addView(newButton);
         orgLayout.addView(locList);
@@ -159,7 +160,7 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
         newButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                startNewActivity();
+                startNewActivity(name, description);
             }
         });
     }
@@ -180,8 +181,12 @@ public class LoggedInActivity extends AppCompatActivity implements AsyncResponse
     /**
      * create an Intent and start the new activity
      */
-    public void startNewActivity(){
-        startActivity(new Intent(this, LocationView.class));
+    public void startNewActivity(String locationName, String locationDescription){
+        Intent intent = new Intent(this, LocationView.class);
+        intent.putExtra("userid", userid);
+        intent.putExtra("locationName", locationName);
+        intent.putExtra("locationDescription", locationDescription);
+        startActivity(intent);
     }
 
 

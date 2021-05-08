@@ -9,19 +9,25 @@
         android:id="@+id/locationName"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:text="Events at SELECTED LOCATION"
         android:textAppearance="@style/TextAppearance.AppCompat.Large"
         android:visibility="visible" />
 
-    <ScrollView
-        android:id="@+id/eventList"
+    <TextView
+        android:id="@+id/locationDescription"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:paddingBottom="100dp"
+        android:visibility="visible" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </ScrollView>
+    <CalendarView
+        android:id="@+id/appointmentCalendar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/submitDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Submit" />
 
 </LinearLayout>
